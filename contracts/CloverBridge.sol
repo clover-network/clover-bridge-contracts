@@ -49,6 +49,10 @@ contract CloverBridge is AccessControl {
     return true;
   }
 
+  function hasMinted(uint32 blockNumber, uint32 txIndex) public view returns (bool) {
+    return _mintedTxs[getTxKey(blockNumber, txIndex)];
+  }
+
   // build a uint64 key from blockNumber and tx index
   // the left 32bit is the blocki number
   // the right 32bit is the tx index
