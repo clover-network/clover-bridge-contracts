@@ -1,5 +1,5 @@
 const HDWalletProvider = require('@truffle/hdwallet-provider');
-const { mnemonic, BSCSCANAPIKEY} = require('./env');
+const { mnemonic, BSCSCANAPIKEY, BSCPRIVATEKEY } = require('./env');
 
 module.exports = {
   plugins: [
@@ -16,7 +16,23 @@ module.exports = {
       timeoutBlocks: 200,
       confirmations: 5,
       production: true,
-    }
+    },
+    smartchain: {
+      provider: () => new HDWalletProvider({
+        privateKeys: [
+          BSCPRIVATEKEY,
+        ],
+        providerOrUrl: "https://bsc-dataseed.binance.org/"
+      }),
+      chain_id: 56,
+      network_id: 56,
+      gas: 8000000,
+      confirmations: 1,
+      gasPrice: 20000000000,
+      timeoutBlocks: 50,
+      skipDryRun: true,
+      networkCheckTimeout: 10000000
+    },
   },
 
   // Set default mocha options here, use special reporters etc.
