@@ -1,4 +1,5 @@
 const HDWalletProvider = require('@truffle/hdwallet-provider');
+// notes: BSCSCANAPIKEY and BSCPRIVATEKEY are reused for both bsc and eth
 const { mnemonic, BSCSCANAPIKEY, BSCPRIVATEKEY } = require('./env');
 
 module.exports = {
@@ -6,7 +7,8 @@ module.exports = {
     'truffle-plugin-verify'
   ],
   api_keys: {
-    bscscan: BSCSCANAPIKEY
+    bscscan: BSCSCANAPIKEY,
+    etherscan: BSCSCANAPIKEY
   },
   networks: {
     testnet: {
@@ -33,6 +35,21 @@ module.exports = {
       skipDryRun: true,
       networkCheckTimeout: 10000000
     },
+    mainnet: {
+      provider: () => new HDWalletProvider({
+        privateKeys: [
+          BSCPRIVATEKEY,
+        ],
+        providerOrUrl: "https://mainnet.infura.io/v3/428c9baabdf54b7597db80541f94311e"
+      }),
+      network_id:    1,
+      gas:           8000000,
+      confirmations: 1,
+      gasPrice: 80000000000,
+      timeoutBlocks: 50,
+      skipDryRun:    true,
+      networkCheckTimeout: 10000000
+    }
   },
 
   // Set default mocha options here, use special reporters etc.

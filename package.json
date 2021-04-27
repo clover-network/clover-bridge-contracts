@@ -2,13 +2,15 @@
   "scripts": {
     "compile": "truffle compile --all",
     "migrate:smartchain": "truffle compile --all && truffle migrate --network smartchain",
+    "migrate:mainnet": "truffle compile --all && truffle migrate --network mainnet",
     "verify:smartchain": "truffle run verify --network smartchain CloverToken CloverBridge",
+    "verify:mainnet": "truffle run verify --network mainnet CloverToken CloverBridge",
     "build:addresses": "node scripts/build_abi.js"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.0.0",
     "@truffle/hdwallet-provider": "^1.2.6",
-    "truffle": "5.2.3",
+    "truffle": "5.3.0",
     "truffle-plugin-verify": "^0.5.7"
   },
   "license": "ISC"
