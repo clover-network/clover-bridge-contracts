@@ -8,12 +8,9 @@
     "build:addresses": "node scripts/build_abi.js"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.0.0",
-    "@truffle/hdwallet-provider": "^1.2.6",
-    "truffle": "5.3.0",
-    "truffle-plugin-verify": "^0.5.7"
+    "@openzeppelin/contracts": ">=4.4.1"
   },
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "hardhat": "^2.9.3"
   },
