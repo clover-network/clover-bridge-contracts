@@ -1,6 +1,10 @@
-build/
-node_modules/
-env.js
-.DS_Store
-artifacts
+node_modules
+.env
+coverage
+coverage.json
+typechain
+
+#Hardhat files
 cache
+artifacts
+data

@@ -11,20 +11,11 @@ contract CloverBridge is AccessControl {
     // bridge role which could mint bridge transactions
     bytes32 public constant BRIDGE_ROLE = keccak256("BRIDGE_ROLE");
 
-    event CrossTransfered(
-        uint32 indexed chainId,
-        bytes32 indexed dest,
-        uint256 amount
-    );
+    event CrossTransfered(uint32 indexed chainId, bytes32 indexed dest, uint256 amount);
 
-    event TranactionMinted(
-        uint32 indexed chainId,
-        bytes32 txHash,
-        address indexed dest,
-        uint256 amount
-    );
+    event TranactionMinted(uint32 indexed chainId, bytes32 txHash, address indexed dest, uint256 amount);
 
-    IERC20 immutable _token;
+    IERC20 public immutable _token;
 
     // chainId => minted transactions
     mapping(uint32 => mapping(bytes32 => bool)) public _mintedTransactions;
@@ -45,10 +36,7 @@ contract CloverBridge is AccessControl {
         bytes32 dest,
         uint256 amount
     ) external returns (bool) {
-        require(
-            _token.transferFrom(msg.sender, address(this), amount),
-            "CloverBridge: transfer failed"
-        );
+        require(_token.transferFrom(msg.sender, address(this), amount), "CloverBridge: transfer failed");
 
         emit CrossTransfered(chainId, dest, amount);
         return true;
@@ -63,46 +51,29 @@ contract CloverBridge is AccessControl {
         address dest,
         uint256 amount
     ) external returns (bool) {
-        require(
-            hasRole(BRIDGE_ROLE, _msgSender()),
-            "CloverBridge: must have bridge role"
-        );
+        require(hasRole(BRIDGE_ROLE, _msgSender()), "CloverBridge: bridge role");
         require(dest != address(0), "CloverBridge: invalid address");
-        require(dest != address(this), "CloverBridge: invalid dest address");
-        require(
-            _token.balanceOf(address(this)) >= amount,
-            "CloverBridge: balance is not enough in the bridge contract!"
-        );
+        require(dest != address(this), "CloverBridge: invalid dest");
+        require(_token.balanceOf(address(this)) >= amount, "CloverBridge: balance insufficient");
 
-        require(
-            !_mintedTransactions[chainId][txHash],
-            "CloverBridge: tx already minted!"
-        );
-        require(
-            _token.transfer(dest, amount),
-            "CloverBridge: transfer failed!"
-        );
+        require(!_mintedTransactions[chainId][txHash], "CloverBridge: tx already minted!");
+
         _mintedTransactions[chainId][txHash] = true;
+
+        require(_token.transfer(dest, amount), "CloverBridge: transfer failed!");
 
         emit TranactionMinted(chainId, txHash, dest, amount);
 
         return true;
     }
 
-    function hasMinted(uint32 chainId, bytes32 txHash)
-        public
-        view
-        returns (bool)
-    {
+    function hasMinted(uint32 chainId, bytes32 txHash) public view returns (bool) {
         return _mintedTransactions[chainId][txHash];
     }
 
     // helper method to withdraw tokens to the admin account
     function withdraw(IERC20 token) public returns (bool) {
-        require(
-            hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),
-            "CloverBridge: must have admin role"
-        );
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "CloverBridge: must have admin role");
         token.safeTransfer(msg.sender, token.balanceOf(address(this)));
         return true;
     }
