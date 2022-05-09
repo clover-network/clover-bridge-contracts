@@ -38,7 +38,7 @@ describe('bridge contract', function () {
   });
 
   it('cross chain mint works', async function () {
-    const [, alice, minter] = await ethers.getSigners();
+    const [admin, alice, minter] = await ethers.getSigners();
 
     const CLV = await ethers.getContractFactory('CloverToken');
     const clv = await CLV.deploy();
@@ -73,5 +73,9 @@ describe('bridge contract', function () {
     await expect(bridgeAlice.mintTransaction(1, formatBytes32String('0x0012'), alice.address, parseEther('100'))).to.rejectedWith(
       'CloverBridge: bridge role'
     );
+
+    await bridge.withdraw(clv.address);
+    await expect(clv.balanceOf(bridge.address)).to.eventually.eq('0');
+    await expect(clv.balanceOf(admin.address)).to.eventually.eq(parseEther('9900'));
   });
 });
