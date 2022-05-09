@@ -13,7 +13,7 @@ contract CloverBridge is AccessControl {
 
     event CrossTransfered(uint32 indexed chainId, bytes32 indexed dest, uint256 amount);
 
-    event TranactionMinted(uint32 indexed chainId, bytes32 txHash, address indexed dest, uint256 amount);
+    event TransactionMinted(uint32 indexed chainId, bytes32 txHash, address indexed dest, uint256 amount);
 
     IERC20 public immutable _token;
 
@@ -62,7 +62,7 @@ contract CloverBridge is AccessControl {
 
         require(_token.transfer(dest, amount), "CloverBridge: transfer failed!");
 
-        emit TranactionMinted(chainId, txHash, dest, amount);
+        emit TransactionMinted(chainId, txHash, dest, amount);
 
         return true;
     }
