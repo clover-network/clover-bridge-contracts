@@ -67,7 +67,7 @@ contract CloverBridge is AccessControl {
         return true;
     }
 
-    function hasMinted(uint32 chainId, bytes32 txHash) public view returns (bool) {
+    function isMinted(uint32 chainId, bytes32 txHash) public view returns (bool) {
         return _mintedTransactions[chainId][txHash];
     }
 

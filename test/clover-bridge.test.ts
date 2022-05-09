@@ -54,11 +54,15 @@ describe('bridge contract', function () {
 
     const bridgeMinter = bridge.connect(minter);
 
+    await expect(bridgeMinter.isMinted(1, formatBytes32String('0x0011'))).to.eventually.equal(false);
+
     await expect(bridgeMinter.mintTransaction(1, formatBytes32String('0x0011'), alice.address, parseEther('100')))
       .to.emit(bridge, 'TransactionMinted')
       .withArgs(1, formatBytes32String('0x0011'), alice.address, parseEther('100'));
     await expect(clv.balanceOf(alice.address)).to.eventually.eq(parseEther('100'));
     await expect(clv.balanceOf(bridge.address)).to.eventually.eq(parseEther('9900'));
+
+    await expect(bridgeMinter.isMinted(1, formatBytes32String('0x0011'))).to.eventually.equal(true);
 
     await expect(bridgeMinter.mintTransaction(1, formatBytes32String('0x0011'), alice.address, parseEther('100'))).to.rejectedWith(
       'CloverBridge: tx already minted!'
