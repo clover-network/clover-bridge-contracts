@@ -130,5 +130,6 @@ describe('bridge contract', function () {
     expect(balanceAdminAfter.sub(parseEther('10100')).add(withdrawReceipt.gasUsed.mul(withdrawReceipt.effectiveGasPrice))).to.be.eq(
       balanceAdmin
     );
+    await expect(ethers.provider.getBalance(bridge.address)).to.eventually.eq(parseEther('0'));
   });
 });
