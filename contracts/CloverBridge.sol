@@ -42,6 +42,13 @@ contract CloverBridge is AccessControl {
         return true;
     }
 
+    function crossTransferNative(uint32 chainId, bytes32 dest) external payable returns (bool) {
+        require(address(_token) == address(0), "CloverBridge: invalid bridge method");
+        require(msg.value > 0, "CloverBridge: value required");
+        emit CrossTransfered(chainId, dest, msg.value);
+        return true;
+    }
+
     // mint a tx from outside to current chain(e.g. ethereum)
     // note here we use bytes32 to represent an unique transaction on the source chain
     // the txHash conventation should be identical between the bridge minters
@@ -54,13 +61,22 @@ contract CloverBridge is AccessControl {
         require(hasRole(BRIDGE_ROLE, _msgSender()), "CloverBridge: bridge role");
         require(dest != address(0), "CloverBridge: invalid address");
         require(dest != address(this), "CloverBridge: invalid dest");
-        require(_token.balanceOf(address(this)) >= amount, "CloverBridge: balance insufficient");
+        bool isNative = address(_token) == address(0);
+        if (!isNative) {
+            require(_token.balanceOf(address(this)) >= amount, "CloverBridge: balance insufficient");
+        } else {
+            require(address(this).balance >= amount, "CloverBridge: balance insufficient");
+        }
 
         require(!_mintedTransactions[chainId][txHash], "CloverBridge: tx already minted!");
 
         _mintedTransactions[chainId][txHash] = true;
 
-        require(_token.transfer(dest, amount), "CloverBridge: transfer failed!");
+        if (!isNative) {
+            require(_token.transfer(dest, amount), "CloverBridge: transfer failed!");
+        } else {
+            payable(dest).transfer(amount);
+        }
 
         emit TransactionMinted(chainId, txHash, dest, amount);
 
@@ -72,9 +88,13 @@ contract CloverBridge is AccessControl {
     }
 
     // helper method to withdraw tokens to the admin account
-    function withdraw(IERC20 token) public returns (bool) {
+    function withdraw(IERC20 token) external returns (bool) {
         require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "CloverBridge: must have admin role");
-        token.safeTransfer(msg.sender, token.balanceOf(address(this)));
+        if (address(token) != address(0)) {
+            token.safeTransfer(msg.sender, token.balanceOf(address(this)));
+        } else {
+            payable(msg.sender).transfer(address(this).balance);
+        }
         return true;
     }
 }
