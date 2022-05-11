@@ -132,4 +132,50 @@ describe('bridge contract', function () {
     );
     await expect(ethers.provider.getBalance(bridge.address)).to.eventually.eq(parseEther('0'));
   });
+
+  it('native cross chain mint works', async function () {
+    const [admin, alice, minter] = await ethers.getSigners();
+
+    const Bridge = await ethers.getContractFactory('CloverBridge');
+    const bridge = await Bridge.deploy(ethers.constants.AddressZero);
+
+    // setup minter role
+    await bridge.grantRole(await bridge.BRIDGE_ROLE(), minter.address);
+
+    const bridgeBalance = parseEther('10000');
+    await admin.sendTransaction({
+      to: bridge.address,
+      value: bridgeBalance,
+    });
+
+    const bridgeMinter = bridge.connect(minter);
+
+    await expect(bridgeMinter.isMinted(1, formatBytes32String('0x0011'))).to.eventually.equal(false);
+
+    const aliceBalanceInitial = await alice.getBalance();
+
+    await expect(bridgeMinter.mintTransaction(1, formatBytes32String('0x0011'), alice.address, parseEther('100')))
+      .to.emit(bridge, 'TransactionMinted')
+      .withArgs(1, formatBytes32String('0x0011'), alice.address, parseEther('100'));
+    await expect(alice.getBalance()).to.eventually.eq(parseEther('100').add(aliceBalanceInitial));
+    await expect(ethers.provider.getBalance(bridge.address)).to.eventually.eq(parseEther('9900'));
+
+    await expect(bridgeMinter.isMinted(1, formatBytes32String('0x0011'))).to.eventually.equal(true);
+
+    await expect(bridgeMinter.mintTransaction(1, formatBytes32String('0x0011'), alice.address, parseEther('100'))).to.rejectedWith(
+      'CloverBridge: tx already minted!'
+    );
+
+    // only minter can mint transactions
+    const bridgeAlice = bridge.connect(alice);
+    await expect(bridgeAlice.mintTransaction(1, formatBytes32String('0x0012'), alice.address, parseEther('100'))).to.rejectedWith(
+      'CloverBridge: bridge role'
+    );
+
+    await bridge.withdraw(ethers.constants.AddressZero);
+    await expect(ethers.provider.getBalance(bridge.address)).to.eventually.eq('0');
+
+    // erc20 cross transfer should be disabled
+    await expect(bridgeAlice.crossTransfer(1, formatBytes32String('0x1'), parseEther('100'))).to.eventually.rejected;
+  });
 });
