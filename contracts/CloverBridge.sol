@@ -87,6 +87,10 @@ contract CloverBridge is AccessControl {
         return _mintedTransactions[chainId][txHash];
     }
 
+    receive() external payable {
+        // deposit function
+    }
+
     // helper method to withdraw tokens to the admin account
     function withdraw(IERC20 token) external returns (bool) {
         require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "CloverBridge: must have admin role");
