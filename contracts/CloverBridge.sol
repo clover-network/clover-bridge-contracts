@@ -11,7 +11,7 @@ contract CloverBridge is AccessControl {
     // bridge role which could mint bridge transactions
     bytes32 public constant BRIDGE_ROLE = keccak256("BRIDGE_ROLE");
 
-    event CrossTransfered(uint32 indexed chainId, bytes32 indexed dest, uint256 amount);
+    event CrossTransfered(uint32 indexed chainId, address indexed from, bytes32 indexed dest, uint256 amount);
 
     event TransactionMinted(uint32 indexed chainId, bytes32 txHash, address indexed dest, uint256 amount);
 
@@ -38,14 +38,14 @@ contract CloverBridge is AccessControl {
     ) external returns (bool) {
         require(_token.transferFrom(msg.sender, address(this), amount), "CloverBridge: transfer failed");
 
-        emit CrossTransfered(chainId, dest, amount);
+        emit CrossTransfered(chainId, msg.sender, dest, amount);
         return true;
     }
 
     function crossTransferNative(uint32 chainId, bytes32 dest) external payable returns (bool) {
         require(address(_token) == address(0), "CloverBridge: invalid bridge method");
         require(msg.value > 0, "CloverBridge: value required");
-        emit CrossTransfered(chainId, dest, msg.value);
+        emit CrossTransfered(chainId, msg.sender, dest, msg.value);
         return true;
     }
 

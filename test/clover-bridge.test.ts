@@ -27,7 +27,7 @@ describe('bridge contract', function () {
     await clvAlice.approve(bridge.address, parseEther('1000'));
     await expect(bridgeAlice.crossTransfer(1, formatBytes32String('0x1'), parseEther('100')))
       .to.emit(bridge, 'CrossTransfered')
-      .withArgs(1, formatBytes32String('0x1'), parseEther('100'));
+      .withArgs(1, alice.address, formatBytes32String('0x1'), parseEther('100'));
     await expect(clv.balanceOf(alice.address)).to.eventually.eq(parseEther('900'));
     await expect(clv.balanceOf(bridge.address)).to.eventually.eq(parseEther('10100'));
     await expect(clv.allowance(alice.address, bridge.address)).to.eventually.eq(parseEther('900'));
@@ -107,7 +107,7 @@ describe('bridge contract', function () {
     const tx = bridgeAlice.crossTransferNative(1, formatBytes32String('0x1'), {
       value: parseEther('100'),
     });
-    await expect(tx).to.emit(bridge, 'CrossTransfered').withArgs(1, formatBytes32String('0x1'), parseEther('100'));
+    await expect(tx).to.emit(bridge, 'CrossTransfered').withArgs(1, alice.address, formatBytes32String('0x1'), parseEther('100'));
     const receipt = await (await tx).wait();
     const aliceBalanceAfter = await alice.getBalance();
     // need to check the balance and the fee used
