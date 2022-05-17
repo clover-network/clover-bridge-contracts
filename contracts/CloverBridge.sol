@@ -3,67 +3,102 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Clover ERC20 token contract
 contract CloverBridge is AccessControl {
-  // bridge role which could mint bridge transactions
-  bytes32 public constant BRIDGE_ROLE = keccak256("BRIDGE_ROLE");
+    using SafeERC20 for IERC20;
+    // bridge role which could mint bridge transactions
+    bytes32 public constant BRIDGE_ROLE = keccak256("BRIDGE_ROLE");
 
-  event TxMinted(uint32 indexed blockNumber, uint32 txIndex, address dest, uint256 amount);
+    event CrossTransfered(uint32 indexed chainId, address indexed from, bytes32 indexed dest, uint256 amount);
 
-  IERC20 _token;
+    event TransactionMinted(uint32 indexed chainId, bytes32 txHash, address indexed dest, uint256 amount);
 
-  mapping (uint64 => bool) private _mintedTxs;
+    IERC20 public immutable _token;
 
-  constructor(IERC20 token) {
-    _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
-    _setupRole(BRIDGE_ROLE, _msgSender());
-    _token = token;
-  }
+    // chainId => minted transactions
+    mapping(uint32 => mapping(bytes32 => bool)) public _mintedTransactions;
 
-  // return the token info
-  function getToken() public view returns (IERC20) {
-    return _token;
-  }
+    constructor(IERC20 token) {
+        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _setupRole(BRIDGE_ROLE, _msgSender());
+        _token = token;
+    }
 
-  // mint a tx from clover to bsc chain
-  // note here we use the blockNumber + txIndex instead of txHash to identify the transaction
-  // because tx hash is not guarantee to be unique in substrate based chains.
-  // refer to: https://wiki.polkadot.network/docs/en/build-protocol-info#unique-identifiers-for-extrinsics
-  function mintTx(uint32 blockNumber, uint32 txIndex, address dest, uint256 amount) public returns (bool) {
-    require(hasRole(BRIDGE_ROLE, _msgSender()), "CloverBridge: must have bridge role");
-    require(dest != address(0), "CloverBridge: invalid address");
-    require(dest != address(this), "CloverBridge: invalid dest address");
-    require(_token.balanceOf(address(this)) >= amount, "CloverBridge: balance is not enough in the bridge contract!");
+    // return the token info
+    function getToken() public view returns (IERC20) {
+        return _token;
+    }
 
-    uint64 txKey = getTxKey(blockNumber, txIndex);
-    // check whether this tx is minted
-    require(!_mintedTxs[txKey], "CloverBridge: tx already minted!");
+    function crossTransfer(
+        uint32 chainId,
+        bytes32 dest,
+        uint256 amount
+    ) external returns (bool) {
+        require(_token.transferFrom(msg.sender, address(this), amount), "CloverBridge: transfer failed");
 
-    // transfer might fail with some reason
-    // e.g. the transfer is paused in the token contract
-    require(_token.transfer(dest, amount), "CloverBridge: transfer failed!");
-    _mintedTxs[txKey] = true;
+        emit CrossTransfered(chainId, msg.sender, dest, amount);
+        return true;
+    }
 
-    emit TxMinted(blockNumber, txIndex, dest, amount);
-    return true;
-  }
+    function crossTransferNative(uint32 chainId, bytes32 dest) external payable returns (bool) {
+        require(address(_token) == address(0), "CloverBridge: invalid bridge method");
+        require(msg.value > 0, "CloverBridge: value required");
+        emit CrossTransfered(chainId, msg.sender, dest, msg.value);
+        return true;
+    }
 
-  function hasMinted(uint32 blockNumber, uint32 txIndex) public view returns (bool) {
-    return _mintedTxs[getTxKey(blockNumber, txIndex)];
-  }
+    // mint a tx from outside to current chain(e.g. ethereum)
+    // note here we use bytes32 to represent an unique transaction on the source chain
+    // the txHash conventation should be identical between the bridge minters
+    function mintTransaction(
+        uint32 chainId,
+        bytes32 txHash,
+        address dest,
+        uint256 amount
+    ) external returns (bool) {
+        require(hasRole(BRIDGE_ROLE, _msgSender()), "CloverBridge: bridge role");
+        require(dest != address(0), "CloverBridge: invalid address");
+        require(dest != address(this), "CloverBridge: invalid dest");
+        bool isNative = address(_token) == address(0);
+        if (!isNative) {
+            require(_token.balanceOf(address(this)) >= amount, "CloverBridge: balance insufficient");
+        } else {
+            require(address(this).balance >= amount, "CloverBridge: balance insufficient");
+        }
 
-  // build a uint64 key from blockNumber and tx index
-  // the left 32bit is the blocki number
-  // the right 32bit is the tx index
-  function getTxKey(uint32 blockNumber, uint32 txIndex) internal pure returns (uint64) {
-    return uint64((uint64(blockNumber) << 32) | txIndex);
-  }
+        require(!_mintedTransactions[chainId][txHash], "CloverBridge: tx already minted!");
 
-  // helper method to withdraw tokens to the admin account
-  function withdraw(IERC20 token) public returns (bool) {
-    require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "CloverBridge: must have admin role");
-    token.transfer(msg.sender, token.balanceOf(address(this)));
-    return true;
-  }
+        _mintedTransactions[chainId][txHash] = true;
+
+        if (!isNative) {
+            require(_token.transfer(dest, amount), "CloverBridge: transfer failed!");
+        } else {
+            payable(dest).transfer(amount);
+        }
+
+        emit TransactionMinted(chainId, txHash, dest, amount);
+
+        return true;
+    }
+
+    function isMinted(uint32 chainId, bytes32 txHash) public view returns (bool) {
+        return _mintedTransactions[chainId][txHash];
+    }
+
+    receive() external payable {
+        // deposit function
+    }
+
+    // helper method to withdraw tokens to the admin account
+    function withdraw(IERC20 token) external returns (bool) {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "CloverBridge: must have admin role");
+        if (address(token) != address(0)) {
+            token.safeTransfer(msg.sender, token.balanceOf(address(this)));
+        } else {
+            payable(msg.sender).transfer(address(this).balance);
+        }
+        return true;
+    }
 }
