@@ -25,12 +25,27 @@ const config: HardhatUserConfig = {
       url: process.env['ROPSTEN_RPC_URL'] || '',
       accounts: process.env['ROPSTEN_DEPLOYER_KEY'] ? [process.env['ROPSTEN_DEPLOYER_KEY']] : undefined,
     },
+    clv: {
+      url: process.env.CLV_API_URL || 'https://api-para.clover.finance',
+      accounts: process.env.CLV_PRIVATE_KEY ? [process.env.CLV_PRIVATE_KEY] : [],
+    },
   },
   etherscan: {
     apiKey: {
       rinkeby: process.env['RINKEBY_API_KEY'] || '',
       ropsten: process.env['ROPSTEN_API_KEY'] || '',
-    },
+      clv: process.env.CLV_SCAN_API_KEY || '',
+    } as any,
+    customChains: [
+      {
+        network: 'clv',
+        chainId: 1024,
+        urls: {
+          apiURL: 'https://api.clvscan.com/api',
+          browserURL: 'https://clvscan.com',
+        },
+      },
+    ],
   },
 };
 
