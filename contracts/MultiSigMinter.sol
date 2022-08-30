@@ -47,9 +47,11 @@ contract MultiSigMinter is AccessControl {
         bytes32 txHash,
         address dest,
         uint256 amount
-    ) public pure returns (bool) {
+    ) public view returns (bool) {
         bytes memory prefix = "\x19ClvBridgeMinter:\n32";
-        bytes32 proof = keccak256(abi.encodePacked(prefix, chainBridgeId, txHash, dest, amount, sig.deadline));
+        // address + chainBridgeId is unique across all bridge deployments
+        // it's safe to upgrade the contract without the concern of the replay attack.
+        bytes32 proof = keccak256(abi.encodePacked(prefix, address(this), chainBridgeId, txHash, dest, amount, sig.deadline));
         address recovered = ecrecover(proof, sig.v, sig.r, sig.s);
         return recovered == sig.minter;
     }
