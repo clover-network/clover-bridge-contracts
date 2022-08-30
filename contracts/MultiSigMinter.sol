@@ -22,23 +22,29 @@ contract MultiSigMinter is AccessControl {
     mapping(uint32 => mapping(address => bool)) public _bridgeMinters;
     mapping(uint32 => BridgeConfig) public _bridgeConfig;
 
+    event BridgeConfigChanged(uint32 indexed chainBridgeId, uint8 minSigs, uint256 fee);
+    event BridgeRemoved(uint32 indexed chainBridgeId);
+    event MinterAdded(uint32 indexed chainBridgeId, address minter);
+    event MinterRemoved(uint32 indexed chainBridgeId, address minter);
+
     ICloverBridge public immutable _bridge;
 
     constructor(ICloverBridge bridge) {
         _bridge = bridge;
+        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
     struct BridgeConfig {
-        uint256 mintFee;
         uint8 minSigs;
+        uint256 mintFee;
     }
 
     struct SigInfo {
         uint8 v;
         bytes32 r;
         bytes32 s;
-        address minter;
         uint64 deadline;
+        address minter;
     }
 
     function verifySig(
@@ -65,7 +71,7 @@ contract MultiSigMinter is AccessControl {
     ) external returns (bool) {
         require(hasRole(RELAYER_ROLE, _msgSender()), "MultiSigMinter: no perm");
         BridgeConfig memory cfg = _bridgeConfig[chainBridgeId];
-        require(cfg.minSigs > 1, "MultiSigMinter: min sigs required");
+        require(isBridgeEnabled(chainBridgeId), "MultiSigMinter: bridge disabled");
         require(sigs.length >= cfg.minSigs, "MultiSigMinter: sig threshold");
         for (uint256 i = 0; i < sigs.length; i++) {
             SigInfo calldata sig = sigs[i];
@@ -81,5 +87,38 @@ contract MultiSigMinter is AccessControl {
         require(_bridge.mintTransaction(chainBridgeId, txHash, dest, amount), "MultiSigMinter: failed");
 
         return true;
+    }
+
+    function setBridgeParams(
+        uint32 chainBridgeId,
+        uint8 minSigs,
+        uint256 fee
+    ) external returns (bool) {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "MultiSigMinter: must have admin role");
+        _bridgeConfig[chainBridgeId] = BridgeConfig({minSigs: minSigs, mintFee: fee});
+        emit BridgeConfigChanged(chainBridgeId, minSigs, fee);
+        return true;
+    }
+
+    function disableBridge(uint32 chainBridgeId) external {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "MultiSigMinter: must have admin role");
+        delete _bridgeConfig[chainBridgeId];
+        emit BridgeRemoved(chainBridgeId);
+    }
+
+    function isBridgeEnabled(uint32 chainBridgeId) public view returns (bool) {
+        return _bridgeConfig[chainBridgeId].minSigs > 1;
+    }
+
+    function addMinter(uint32 chainBridgeId, address minter) external {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "MultiSigMinter: must have admin role");
+        _bridgeMinters[chainBridgeId][minter] = true;
+        emit MinterAdded(chainBridgeId, minter);
+    }
+
+    function removeMinter(uint32 chainBridgeId, address minter) external {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "MultiSigMinter: must have admin role");
+        delete _bridgeMinters[chainBridgeId][minter];
+        emit MinterRemoved(chainBridgeId, minter);
     }
 }

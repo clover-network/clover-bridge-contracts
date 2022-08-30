@@ -47,6 +47,10 @@ const config: HardhatUserConfig = {
       },
     ],
   },
+  gasReporter: {
+    gasPrice: 10,
+    ethPrice: 1000,
+  } as unknown as any, // to support ethPrice config
 };
 
 export default config;
